@@ -1,0 +1,25 @@
+[package]
+name = "multiplexer"
+description = "Abstraction for GPIO expanders"
+keywords = ["i2c", "gpio-expander", "gpio", "pca", "pcf"]
+categories = ["embedded", "no-std", "hardware-support"]
+
+version = "0.1.0"
+
+edition = "2021"
+
+
+
+[features]
+std = []
+
+[dependencies]
+critical-section = { version = "1.1.2", optional = true }
+embedded-hal = { version = "1.0.0" }
+embedded-hal-async = { version = "1.0.0" }
+embassy-futures = { version = "0.1" }
+embassy-sync = { version = "0.6" }
+heapless = { version = "0.8" }
+
+[dev-dependencies]
+embedded-hal-mock = "0.11"
