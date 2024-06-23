@@ -31,7 +31,7 @@ impl<I2C: I2cBus> I2cExt for I2C {
     type Error = I2C::BusError;
 
     async fn write_reg<R: Into<u8>>(&mut self, addr: u8, reg: R, value: u8) -> Result<(), Self::Error> {
-        self.write(addr, &[reg.into(), value])?;
+        self.write(addr, &[reg.into(), value]).await?;
         Ok(())
     }
 
@@ -44,16 +44,16 @@ impl<I2C: I2cBus> I2cExt for I2C {
     ) -> Result<(), Self::Error> {
         let reg = reg.into();
         let mut buf = [0x00];
-        self.write_read(addr, &[reg], &mut buf)?;
+        self.write_read(addr, &[reg], &mut buf).await?;
         buf[0] |= mask_set;
         buf[0] &= !mask_clear;
-        self.write(addr, &[reg, buf[0]])?;
+        self.write(addr, &[reg, buf[0]]).await?;
         Ok(())
     }
 
     async fn read_reg<R: Into<u8>>(&mut self, addr: u8, reg: R) -> Result<u8, Self::Error> {
         let mut buf = [0x00];
-        self.write_read(addr, &[reg.into()], &mut buf)?;
+        self.write_read(addr, &[reg.into()], &mut buf).await?;
         Ok(buf[0])
     }
 }
