@@ -1,8 +1,9 @@
 [package]
 name = "multiplexer"
 description = "Abstraction for GPIO expanders"
-keywords = ["i2c", "gpio-expander", "gpio", "pca", "pcf"]
-categories = ["embedded", "no-std", "hardware-support"]
+keywords = ["i2c", "gpio-expander", "gpio", "pca", "pcf", "mcp", "async"]
+categories = ["embedded", "no-std", "hardware-support", "asynchronous"]
+license = "MIT OR Apache-2.0"
 
 version = "0.1.0"
 

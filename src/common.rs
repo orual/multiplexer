@@ -1,7 +1,5 @@
 use core::{borrow::Borrow, ops::Deref};
 
-use rclite::Arc;
-
 use crate::IRQPort;
 
 

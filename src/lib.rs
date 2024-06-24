@@ -35,3 +35,9 @@ pub(crate) use common::PortDriverInterrupts;
 pub(crate) use common::PortDriverIrqMask;
 pub(crate) use common::PortDriverISR;
 pub(crate) use common::PortDriverExtI;
+
+
+pub use dev::mcp23x17::Mcp23x17;
+pub use dev::mcp23x17::McpExtIPins;
+pub use isr::IrqPort;
+pub use isr::ExtIPin;
