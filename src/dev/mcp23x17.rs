@@ -10,13 +10,12 @@
 //!
 //! When passing 16-bit values to this driver, the upper byte corresponds to port
 //! B (pins 7..0) and the lower byte corresponds to port A (pins 7..0).
-use core::{borrow::Borrow, ops::{Deref, DerefMut}};
+use core::{borrow::Borrow, ops::Deref};
 
 use embassy_futures::select::select;
 use embassy_sync::{blocking_mutex::raw::RawMutex, mutex::Mutex};
-use rclite::Rc;
 
-use crate::{isr::{ExtIPin, ISRPort, IrqPort}, I2cExt, IRQPort, PortDriverISR};
+use crate::{isr::{ExtIPin, ISRPort, IrqPort}, I2cExt, IRQPort};
 
 /// `MCP23x17` "16-Bit I/O Expander with Serial Interface" with I2C or SPI interface
 pub struct Mcp23x17<M>(M);
