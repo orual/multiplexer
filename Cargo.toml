@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 exclude = [
     "src/dev/pca9555.rs",
     "src/dev/pcf8574.rs",
-    "src/dev/pcf8574.rs",
+    "src/dev/pcf8575.rs",
     "src/dev/pca9536.rs",
     "src/dev/pcal6416a.rs",
     "src/dev/pcal6408a.rs",
