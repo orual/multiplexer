@@ -40,14 +40,17 @@ where
         }
     }
 
+    /// Read the pin mask for this pin.
     pub fn pin_mask(&self) -> u32 {
         self.pin_mask
     }
-
-    pub(crate) async fn port_driver(&self) -> MutexGuard<RM, PD> {
+    /// Access the port driver in an async context.
+    pub async fn port_driver(&self) -> MutexGuard<RM, PD> {
         self.port_driver.lock().await
     }
 
+    /// Access the port driver directly, if needed, to run a function using the it.
+    /// Due to the lack of async closures, this has limitations.
     pub fn access_port_driver<F, R>(&self, f: F) -> R
     where
         F: FnOnce(&mut PD) -> R,
@@ -109,7 +112,7 @@ where
     IRQ: crate::IRQPort,
     RC: core::ops::Deref<Target = IRQ> + Clone + AsRef<IRQ> + core::borrow::Borrow<IRQ> 
 {
-    /// Configure this pin as an input.
+    /// Configure this pin into an input.
     ///
     /// The exact electrical details depend on the port-expander device which is used.
     pub async fn into_input(self) -> Result<Pin<'a, crate::mode::Input, PD, RM, IRQ, RC>, PinError<PD::Error>> {
@@ -124,9 +127,9 @@ where
         })
     }
 
-    /// Configure this pin as an output with an initial LOW state.
+    /// Configure this pin into an output with an initial LOW state.
     ///
-    /// The LOW state is, as long as he port-expander chip allows this, entered without any
+    /// The LOW state is, as long as the port-expander chip allows this, entered without any
     /// electrical glitch.
     pub async fn into_output(self) -> Result<Pin<'a, crate::mode::Output, PD, RM, IRQ, RC>, PinError<PD::Error>> {
         self.port_driver().await.set_direction(self.pin_mask, crate::Direction::Output, false).await?;
@@ -140,7 +143,7 @@ where
         })
     }
 
-    /// Configure this pin as an output with an initial HIGH state.
+    /// Configure this pin into an output with an initial HIGH state.
     ///
     /// The HIGH state is, as long as he port-expander chip allows this, entered without any
     /// electrical glitch.
@@ -166,6 +169,7 @@ where
     IRQ: crate::IRQPort,
     RC: core::ops::Deref<Target = IRQ> + Clone + AsRef<IRQ> + core::borrow::Borrow<IRQ> 
 {
+    /// Configure this pin into an input with interrupt support.
     pub async fn into_isr_pin(self) -> Result<Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, RC>, PinError<PD::Error>> {
         if self.irq.is_some() { 
             Ok(Pin {
@@ -198,18 +202,21 @@ where
     IRQ: crate::IRQPort,
     RC: core::ops::Deref<Target = IRQ> + Clone + AsRef<IRQ> + core::borrow::Borrow<IRQ> 
 {
+    /// Listen for the specified interrupt type on this pin.
     pub async fn enable_interrupt(&mut self, interrupt_type: crate::InterruptType) -> Result<(), PinError<PD::Error>> {
         if self.irq.is_some() { self.irq.as_ref().unwrap().register_irq(self.pin_mask, interrupt_type); }
         self.port_driver().await.configure_interrupts(self.pin_mask, 0, interrupt_type).await?;
         Ok(())
     }
 
+    /// Stop listening for interrupts on this pin.
     pub async fn disable_interrupt(&mut self) -> Result<(), PinError<PD::Error>> {
         if self.irq.is_some() { self.irq.as_ref().unwrap().unregister_irq(self.pin_mask); }
         self.port_driver().await.configure_interrupts(0, self.pin_mask, crate::InterruptType::Both).await?;
         Ok(())
     }
 
+    /// Wait for an interrupt on this pin. Underlies the `embedded_hal_async::digital::Wait` trait implementation.
     pub async fn wait_for_interrupt(&mut self, interrupt_type: crate::InterruptType) -> Result<(), PinError<PD::Error>> {
         self.enable_interrupt(interrupt_type).await?;
         let maybe_irq = &self.irq;

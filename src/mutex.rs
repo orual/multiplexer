@@ -73,7 +73,7 @@ impl<T> PortMutex for std::sync::Mutex<T> {
     }
 }
 
-#[cfg(feature = "critical-section")]
+#[cfg(feature = "portable_atomic")]
 impl<T> PortMutex for critical_section::Mutex<core::cell::RefCell<T>> {
     type Port = T;
 

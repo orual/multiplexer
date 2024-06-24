@@ -1,6 +1,6 @@
 //! Support for the `MCP23017` and `MCP23S17` "16-Bit I/O Expander with Serial Interface"
 //!
-//! Datasheet: https://ww1.microchip.com/downloads/en/devicedoc/20001952c.pdf
+//! Datasheet: <https://ww1.microchip.com/downloads/en/devicedoc/20001952c.pdf>
 //!
 //! The MCP23x17 offers two eight-bit GPIO ports.  It has three
 //! address pins, so eight devices can coexist on an I2C bus.
@@ -50,6 +50,9 @@ where
     }
 }
 
+/// Interrupt output pins for the MCP23x17 chips (INTA and INTB)
+/// Pass in the `ExtIPin` instances for the interrupt pins.
+/// Each should contain a host GPIO pin which implements `embedded_hal_async::digital::Wait` and is connected to the equivalent pin on the MCP..
 pub struct McpExtIPins<IA, IB>(IA, IB);
 
 impl<RM, W, E> ISRPort for McpExtIPins<ExtIPin<Mutex<RM, W>>, ExtIPin<Mutex<RM, W>>> 
@@ -74,10 +77,12 @@ where
     IRQ: IRQPort,
     IRQRC: Deref<Target = IRQ> + Clone + AsRef<IRQ> + Borrow<IRQ> + ?Sized
 {
+    /// Create a new MCP23x17 driver instance with a mutex
     pub fn with_mutex(bus: B, isr: ISRRC, irq: IRQRC, a0: bool, a1: bool, a2: bool) -> Self {
         Self(Mutex::new(Driver::new(bus, isr, irq, a0, a1, a2)))
     }
-
+    
+    /// Split the MCP23x17 driver instance into its individual pins
     pub fn split(&'a mut self) -> Parts<'a, B, ISR, IRQ, RM, ISRRC, IRQRC, Driver<B, ISRRC, RM, ISR, IRQRC, IRQ>> 
     where 
         
@@ -106,6 +111,8 @@ where
     }
 }
 
+/// Pins of the MCP23x17
+#[allow(missing_docs)]
 pub struct Parts<'a, B, ISR, IRQ, RM, ISRRC, IRQRC, PD = Driver<B, ISRRC, RM, ISR, IRQRC, IRQ>>
 where
     B: Mcp23x17Bus,
@@ -223,6 +230,7 @@ impl From<Regs> for u8 {
     }
 }
 
+/// Driver for the MCP23017 and MCP23S17
 pub struct Driver<B, ISRRC, RM: RawMutex, ISR, IRQRC, IRQ = IrqPort<RM, 16>> {
     bus: B,
     out: u16,
@@ -234,6 +242,7 @@ pub struct Driver<B, ISRRC, RM: RawMutex, ISR, IRQRC, IRQ = IrqPort<RM, 16>> {
     _r: core::marker::PhantomData<RM>,
 }
 
+#[allow(missing_docs)]
 impl<'a, B, ISRRC, RM, ISR, IRQRC, IRQ> Driver<B, ISRRC, RM, ISR, IRQRC, IRQ> 
 where 
     RM: RawMutex,
@@ -569,11 +578,14 @@ where
 
 // We need these newtype wrappers since we can't implement `Mcp23x17Bus` for both `I2cBus` and `SpiBus`
 // at the same time
+#[allow(missing_docs)]
 pub struct Mcp23017Bus<I2C>(I2C);
+#[allow(missing_docs)]
 pub struct Mcp23S17Bus<SPI>(SPI);
 
 /// Special -Bus trait for the Mcp23x17 since the SPI version is a bit special/weird in terms of writing
 /// SPI registers, which can't necessarily be generialized for other devices.
+#[allow(missing_docs)]
 pub trait Mcp23x17Bus {
     type BusError;
 

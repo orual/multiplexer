@@ -2,8 +2,9 @@
 use core::{borrow::Borrow, ops::Deref};
 use embassy_sync::{blocking_mutex::raw::RawMutex, mutex::Mutex};
 
-use crate::{isr::{ExtIPin, ISRPort, IrqPort}, I2cExt, IRQPort};
+use crate::IRQPort;
 
+/// MAX7321 "I2C Port Expander with 8 Open-Drain I/Os"
 pub struct Max7321<M>(M);
 
 /// MAX7321 "I2C Port Expander with 8 Open-Drain I/Os"
@@ -14,6 +15,7 @@ where
     IRQ: IRQPort,
     IRQRC: Deref<Target = IRQ> + Clone + AsRef<IRQ> + Borrow<IRQ> + ?Sized
 {
+    /// Create a new MAX7321 driver instance
     pub fn new(i2c: I2C, a3: bool, a2: bool, a1: bool, a0: bool) -> Self {
         Self::with_mutex(i2c, a3, a2, a1, a0)
     }
@@ -26,10 +28,12 @@ where
     IRQ: IRQPort,
     IRQRC: Deref<Target = IRQ> + Clone + AsRef<IRQ> + Borrow<IRQ> + ?Sized
 {
+    /// Create a new MAX7321 driver instance with a mutex
     pub fn with_mutex(i2c: I2C, a3: bool, a2: bool, a1: bool, a0: bool) -> Self {
         Self(Mutex::new(Driver::new(i2c, a3, a2, a1, a0)))
     }
 
+    /// Split the MAX7321 driver instance into its individual pins
     pub fn split(&mut self) -> Parts<'_, I2C, RM, IRQ, IRQRC> {
         Parts {
             p0: crate::Pin::new(0, &self.0),
@@ -44,6 +48,8 @@ where
     }
 }
 
+/// Pins of the MAX7321
+#[allow(missing_docs)]
 pub struct Parts<'a, I2C, RM, IRQ, IRQRC>
 where
     I2C: crate::I2cBus,
@@ -61,6 +67,7 @@ where
     pub p7: crate::Pin<'a, crate::mode::QuasiBidirectional, Driver<I2C, IRQ, IRQRC>, RM, IRQ, IRQRC>,
 }
 
+/// MAX7321 generic driver
 pub struct Driver<I2C, IRQ, IRQRC> {
     i2c: I2C,
     out: u8,
@@ -69,6 +76,7 @@ pub struct Driver<I2C, IRQ, IRQRC> {
     _iq: core::marker::PhantomData<IRQ>,
 }
 
+#[allow(missing_docs)]
 impl<I2C, IRQ, IRQRC> Driver<I2C, IRQ, IRQRC> {
     pub fn new(i2c: I2C, a3: bool, a2: bool, a1: bool, a0: bool) -> Self {
         let addr = 0x60 | ((a3 as u8) << 3) | ((a2 as u8) << 2) | ((a1 as u8) << 1) | (a0 as u8);

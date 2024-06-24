@@ -1,6 +1,5 @@
 use core::{borrow::Borrow, ops::Deref};
 
-use crate::IRQPort;
 
 
 
@@ -83,13 +82,22 @@ pub trait PortDriverOutputDrive: PortDriver {
     async fn set_drive(&mut self, mask: u32, polarity: Drive) -> Result<(), Self::Error>;
 }
 
-
+/// Interrupt types for port expander pins.
+/// Not all types are supported by all port expanders.
+/// The driver should implement the types it supports and can either return an error for the types it does not support, or implement them in software.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InterruptType {
+    /// Interrupt triggered on a falling edge.
     Falling = 1,
+    /// Interrupt triggered on a rising edge.
     Rising,
+    /// Interrupt triggered on any edge.
     Both,
+    /// Interrupt triggered when the pin is high.
+    /// Behaviour can be one-shot or latched.
     High,
+    /// Interrupt triggered when the pin is low.
+    /// Behaviour can be one-shot or latched.
     Low,
 }
 
@@ -136,6 +144,7 @@ pub mod mode {
     pub struct Input;
     impl HasInput for Input {}
 
+    /// Pin configured as an input with interrupt support.
     pub struct ISRInput;
     impl HasInput for ISRInput {}
     impl HasInterrupt for ISRInput {}
@@ -149,6 +158,7 @@ pub mod mode {
     impl HasInput for QuasiBidirectional {}
     impl HasOutput for QuasiBidirectional {}
 
+    /// Pin configured as a quasi-bidirectional input/output with interrupt support.
     pub struct ISRQuasiBidirectional;
     impl HasInput for ISRQuasiBidirectional {}
     impl HasOutput for ISRQuasiBidirectional {}
@@ -157,6 +167,8 @@ pub mod mode {
     /// Trait that describes a pin on the microcontroller that can be used as an external interrupt output.
     pub trait HasExtI {}
 
+    /// Pin configured as an external interrupt output.
+    /// Unused currently, but may be used in the future.
     pub struct ExtI;
     impl HasExtI for ExtI {}
 

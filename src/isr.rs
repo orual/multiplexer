@@ -7,6 +7,8 @@ use embassy_sync::blocking_mutex::Mutex;
 use embedded_hal_async::digital::Wait;
 use embassy_sync::mutex::Mutex as AsyncMutex;
 
+/// Interrupt request (IRQ) structure
+/// Used to represent the active interrupt for a single pin and to wake its associated task
 #[derive(Debug, Clone)]
 pub struct Irq {
     pub pin_mask: u32,
@@ -15,30 +17,18 @@ pub struct Irq {
     pub waker: Option<Waker>,
 }
 
+/// Interrupt request (IRQ) port
+/// Software structure for managing interrupts.
+/// Functions similarly to the `embassy_sync::waitqueue::MultiWakerRegistration`
+/// However, it selectively wakes tasks based on the pin mask and interrupt type.
 pub struct IrqPort<M: RawMutex, const N: usize>{
     irqs: Mutex<M, RefCell<heapless::Vec<Irq, N>>>,
 }
 
 impl<M: RawMutex, const N: usize> IrqPort<M, N> {
+    /// Create a new IRQ port
     pub const fn new() -> Self {
         Self { irqs: Mutex::const_new(M::INIT, RefCell::new(heapless::Vec::new())) }
-    }
-
-    pub fn push_irq(&self, pin_mask: u32) -> Result<(), IRQError>{
-        self.irqs.lock(|irqs| {
-            let mut irqs = irqs.borrow_mut();
-            if let Some(irq) = irqs.iter_mut().find(|irq| irq.pin_mask == pin_mask) {
-                irq.state = true;
-                if let Some(waker) = &irq.waker {
-                    waker.wake_by_ref();
-                    Ok(())
-                } else {
-                    Err(IRQError::IRQNotFound)
-                }
-            } else {
-                Err(IRQError::InvalidPinMask)
-            }
-        })
     }
 }
 
@@ -164,12 +154,21 @@ impl<M: RawMutex, const N: usize> IRQPort for IrqPort<M, N> {
     }
 }
 
+/// Interrupt request (IRQ) port trait
+/// This is the pin/client side of the IRQ system.
 pub trait IRQPort {
+    /// Register a new interrupt for a pin
     fn register_irq(&self, pin_mask: u32, interrupt: crate::InterruptType) -> Irq;
+    /// Check if an interrupt is registered for a pin
     fn is_registered(&self, pin_mask: u32, interrupt: crate::InterruptType) -> bool;
+    /// Get the corresponding interrupt future for a pin, to `await` on.
     fn get_irq<'s,'a>(&'s self, pin_mask: u32) -> Option<IRQFuture<'s, 'a, Self>> where Self: Sized;
+    /// Unregister an interrupt for a pin
     fn unregister_irq(&self, pin_mask: u32);
+    /// Push a new interrupt to the IRQ port, for distribution to the associated tasks
     fn push_irq(&self, changes: (u32, u32));
+    /// Poll the IRQ port for an interrupt for a specific pin or pins
+    /// Used internally by `IRQFuture` to allow `await`ing for an interrupt
     fn poll_irq(&self, pin_mask: u32, cx: &mut Context<'_>) -> Poll<Result<(), IRQError>>;
 }
 
@@ -212,6 +211,8 @@ pub trait ISRPort {
     async fn wait_for_interrupt(&self) -> ();
 }
 
+/// External interrupt pin (MCU-side input)
+/// Pin must implement the `Wait` trait from `embedded-hal-async`
 pub struct ExtIPin<W>(pub W);
 
 impl<RM, W, E> ISRPort for ExtIPin<AsyncMutex<RM, W>> 
@@ -232,6 +233,7 @@ RC: core::ops::Deref<Target = T> + ?Sized
     async fn wait_for_interrupt(&self) { self.deref().wait_for_interrupt().await }
 }
 
+/// Future for a pin interrupt request.
 pub struct IRQFuture<'s, 'a, ISR: IRQPort> {
     pin_mask: u32,
     isr: &'s ISR,

@@ -1,8 +1,8 @@
-use embedded_hal::{i2c as hal_i2c, spi as hal_spi};
 use embedded_hal_async::{i2c as async_i2c, spi as async_spi};
 
-/// Blanket trait for types implementing `i2c::I2c
+/// Blanket trait for types implementing `async_i2c::I2c`
 pub trait I2cBus: async_i2c::I2c {
+    /// The error type of the I2C bus, matching the error type of the underlying I2C implementation.
     type BusError: From<<Self as async_i2c::ErrorType>::Error>;
 }
 
