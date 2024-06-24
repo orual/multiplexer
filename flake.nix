@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
     systems.url = "github:nix-systems/default";
     devenv.url = "github:cachix/devenv";
     fenix.url = "github:nix-community/fenix";
@@ -31,7 +31,7 @@
 
               modules = [
                 ({ pkgs, config, ... }: {
-                  env.name = "fluid";
+                  env.name = "multiplexer";
                   languages.rust = {
                     enable = true;
                     # https://devenv.sh/reference/options/#languagesrustchannel
