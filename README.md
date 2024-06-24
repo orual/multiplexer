@@ -7,11 +7,11 @@ This crate provides a common set of abstractions for I2C and SPI GPIO expander c
 ```rust
 // This example uses reference-counted pointers from alloc.
 // It should also support non-alloc equivalents from the heapless crate.
+// It does rely on smart pointers of some description to enable shared access for each pin to the interrupt subsystems with minimal duplication.
 extern crate alloc;
 use alloc::rc::Rc;
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embedded_hal::digital::OutputPin;
-
 
 // Initialize I2C peripheral from HAL
 let i2c = todo!();
@@ -32,7 +32,6 @@ async {
     let pin0 = mcp_pins.gpa0.into_output().await.unwrap();
     let pin3 = mcp_pins.gpa3.into_isr_pin().await.unwrap(); // Pins don't respond to interrupts by default
 
-    
     <pin5 as OutputPin>.set_high().unwrap() // HAL trait method (blocking)
     assert!(io1_5.is_high().unwrap());
     pin3.wait_for_rising_edge().await; // waits here, sleeping if this is running on Embassy
