@@ -7,6 +7,18 @@ readme = "README.md"
 keywords = ["i2c", "gpio-expander", "gpio", "pca", "pcf", "mcp", "async"]
 categories = ["embedded", "no-std", "hardware-support", "asynchronous"]
 license = "MIT OR Apache-2.0"
+# temporary until those implementations are refactored
+exclude = [
+    "src/dev/pca9555.rs",
+    "src/dev/pcf8574.rs",
+    "src/dev/pcf8574.rs",
+    "src/dev/pca9536.rs",
+    "src/dev/pcal6416a.rs",
+    "src/dev/pcal6408a.rs",
+    "src/dev/tca6408a.rs",
+    "src/dev/pi4ioe5v6408.rs",
+    "src/dev/pca9538.rs",
+]
 
 version = "0.1.0"
 
