@@ -1,6 +1,9 @@
 [package]
 name = "multiplexer"
-description = "Abstraction for GPIO expanders"
+authors = ["Orual <orual.nbc@proton.me>"]
+description = "Async abstraction for GPIO expanders"
+repository = "https://github.com/orual/multiplexer"
+readme = "README.md"
 keywords = ["i2c", "gpio-expander", "gpio", "pca", "pcf", "mcp", "async"]
 categories = ["embedded", "no-std", "hardware-support", "asynchronous"]
 license = "MIT OR Apache-2.0"
