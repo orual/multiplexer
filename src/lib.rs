@@ -14,6 +14,7 @@ pub mod dev;
 mod mutex;
 mod pin;
 mod isr;
+mod yield_on;
 
 
 pub use bus::I2cBus;

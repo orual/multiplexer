@@ -41,6 +41,7 @@
                   };
                   packages = with pkgs; [
                     cargo-udeps
+                    cargo-release
                   ];
                 })
               ];
