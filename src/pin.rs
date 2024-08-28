@@ -66,7 +66,7 @@ where
 
 
 /// Error type for [`Pin`] which implements [`embedded_hal::digital::Error`].
-#[derive(Debug)]
+#[derive(Debug, defmt::Format)]
 pub struct PinError<PDE> {
     driver_error: PDE,
 }
