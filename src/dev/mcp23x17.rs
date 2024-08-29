@@ -83,7 +83,7 @@ where
     }
     
     /// Split the MCP23x17 driver instance into its individual pins
-    pub fn split(&'a mut self) -> Parts<'a, B, ISR, IRQ, RM, ISRRC, IRQRC, Driver<B, ISRRC, RM, ISR, IRQRC, IRQ>> 
+    pub fn split(&'a self) -> Parts<'a, B, ISR, IRQ, RM, ISRRC, IRQRC, Driver<B, ISRRC, RM, ISR, IRQRC, IRQ>> 
     where 
         
     {
