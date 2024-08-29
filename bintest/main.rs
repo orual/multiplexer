@@ -78,10 +78,9 @@ fn main() -> ! {
     
     let exti_pin = Input::new(p.PIN_18, embassy_rp::gpio::Pull::None);
     let exti = Arc::new(ExtIPin(Mutex::<CriticalSectionRawMutex, _>::new(exti_pin)));
-    let irq = Arc::new(multiplexer::IrqPort::<CriticalSectionRawMutex, 16>::new());
+    let irq = Arc::new(multiplexer::IrqPort::<16>::new());
 
-    let mcp: Mcp23x17<Mutex<CriticalSectionRawMutex, _>> =
-        Mcp23x17::new_mcp23017(i2c_bus, exti, irq, true, false, false);
+    let mcp: Mcp23x17<Mutex<_, mcp23x17::Driver<mcp23x17::Mcp23017Bus<I2c<'_, peripherals::I2C0, i2c::Async>>, Arc<ExtIPin<Mutex<CriticalSectionRawMutex, Input<'_>>>>, ExtIPin<Mutex<CriticalSectionRawMutex, Input<'_>>>, Arc<multiplexer::IrqPort<16>>>>> = Mcp23x17::new_mcp23017(i2c_bus, exti, irq, true, false, false);
     //let mcp = MCP.init(Mutex::new(mcp));
 
     // let drv_enable = block_on(async { mcp_pins.gpb6.into_output_high().await }).unwrap();
@@ -126,9 +125,8 @@ async fn core1_task(_spawner: Spawner, mut mcp: Mcp23x17<
         mcp23x17::Driver<
             mcp23x17::Mcp23017Bus<I2c<'static, peripherals::I2C0, i2c::Async>>,
             Arc<ExtIPin<Mutex<CriticalSectionRawMutex, Input<'static>>>>,
-            CriticalSectionRawMutex,
             ExtIPin<Mutex<CriticalSectionRawMutex, Input<'static>>>,
-            Arc<multiplexer::IrqPort<CriticalSectionRawMutex, 16>>,
+            Arc<multiplexer::IrqPort<16>>,
         >,
     >,
 >,) {
@@ -137,14 +135,17 @@ async fn core1_task(_spawner: Spawner, mut mcp: Mcp23x17<
     let mcp_pins = mcp.split();
     
     let mut led2 = unwrap!(mcp_pins.gpb6.into_output().await);
+    let mut led4 = unwrap!(mcp_pins.gpb7.into_output().await);
 
     loop {
         info!("led 2 on!");
         unwrap!(led2.set_low().await);
+        unwrap!(led4.set_low().await);
         Timer::after_secs(1).await;
 
         info!("led 2 off!");
         unwrap!(led2.set_high().await);
+        unwrap!(led4.set_high().await);
         Timer::after_secs(1).await;
     }
 }

@@ -54,17 +54,16 @@ pub struct Parts<'a, I2C, RM, IRQ, IRQRC>
 where
     I2C: crate::I2cBus,
     RM: RawMutex,
-    IRQ: IRQPort,
-    IRQRC: Deref<Target = IRQ> + Clone + AsRef<IRQ> + Borrow<IRQ> + ?Sized
+    IRQ: IRQPort
 {
-    pub p0: crate::Pin<'a, crate::mode::QuasiBidirectional, Driver<I2C, IRQ, IRQRC>, RM, IRQ, IRQRC>,
-    pub p1: crate::Pin<'a, crate::mode::QuasiBidirectional, Driver<I2C, IRQ, IRQRC>, RM, IRQ, IRQRC>,
-    pub p2: crate::Pin<'a, crate::mode::QuasiBidirectional, Driver<I2C, IRQ, IRQRC>, RM, IRQ, IRQRC>,
-    pub p3: crate::Pin<'a, crate::mode::QuasiBidirectional, Driver<I2C, IRQ, IRQRC>, RM, IRQ, IRQRC>,
-    pub p4: crate::Pin<'a, crate::mode::QuasiBidirectional, Driver<I2C, IRQ, IRQRC>, RM, IRQ, IRQRC>,
-    pub p5: crate::Pin<'a, crate::mode::QuasiBidirectional, Driver<I2C, IRQ, IRQRC>, RM, IRQ, IRQRC>,
-    pub p6: crate::Pin<'a, crate::mode::QuasiBidirectional, Driver<I2C, IRQ, IRQRC>, RM, IRQ, IRQRC>,
-    pub p7: crate::Pin<'a, crate::mode::QuasiBidirectional, Driver<I2C, IRQ, IRQRC>, RM, IRQ, IRQRC>,
+    pub p0: crate::Pin<'a, crate::mode::QuasiBidirectional, Driver<I2C, IRQ, IRQRC>, RM, IRQRC>,
+    pub p1: crate::Pin<'a, crate::mode::QuasiBidirectional, Driver<I2C, IRQ, IRQRC>, RM, IRQRC>,
+    pub p2: crate::Pin<'a, crate::mode::QuasiBidirectional, Driver<I2C, IRQ, IRQRC>, RM, IRQRC>,
+    pub p3: crate::Pin<'a, crate::mode::QuasiBidirectional, Driver<I2C, IRQ, IRQRC>, RM, IRQRC>,
+    pub p4: crate::Pin<'a, crate::mode::QuasiBidirectional, Driver<I2C, IRQ, IRQRC>, RM, IRQRC>,
+    pub p5: crate::Pin<'a, crate::mode::QuasiBidirectional, Driver<I2C, IRQ, IRQRC>, RM, IRQRC>,
+    pub p6: crate::Pin<'a, crate::mode::QuasiBidirectional, Driver<I2C, IRQ, IRQRC>, RM, IRQRC>,
+    pub p7: crate::Pin<'a, crate::mode::QuasiBidirectional, Driver<I2C, IRQ, IRQRC>, RM, IRQRC>,
 }
 
 /// MAX7321 generic driver

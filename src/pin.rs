@@ -8,25 +8,24 @@ use embedded_hal_async::digital::Wait;
 
 
 
+
 /// Representation of a port-expander pin.
 ///
 /// `Pin` is not constructed directly, this type is created by instanciating a port-expander and
 /// then getting access to all its pins using the `.split()` method.
-pub struct Pin<'a, MODE, PD, RM: RawMutex, IRQ, RC> {
+pub struct Pin<'a, MODE, PD, RM: RawMutex, IRQRC> {
     pin_mask: u32,
     port_driver: &'a Mutex<RM, PD>,
-    irq: Option<RC>,
+    irq: Option<IRQRC>,
     _m: PhantomData<MODE>,
-    _g: PhantomData<RM>,
-    _i: PhantomData<IRQ>,
 }
 
-impl<'a, MODE, RM, PD, IRQ, RC> Pin<'a, MODE, PD, RM, IRQ, RC>
+impl<'a, MODE, RM, PD, IRQ, IRQRC> Pin<'a, MODE, PD, RM, IRQRC>
 where
     PD: crate::PortDriver,
     RM: RawMutex,
     IRQ: crate::IRQPort,
-    RC: core::ops::Deref<Target = IRQ> + Clone + AsRef<IRQ> + core::borrow::Borrow<IRQ> 
+    IRQRC: core::ops::Deref<Target = IRQ>
 {
     pub(crate) fn new(pin_number: u8, port_driver: &'a Mutex<RM, PD>) -> Self {
         assert!(pin_number < 32);
@@ -35,8 +34,6 @@ where
             port_driver,
             irq: None,
             _m: PhantomData,
-            _g: PhantomData,
-            _i: PhantomData,
         }
     }
 
@@ -95,35 +92,32 @@ impl<PDE> From<PDE> for PinError<PDE> {
     }
 }
 
-impl<'a, MODE, RM, PD, ISR, RC> ErrorType for Pin<'a, MODE, PD, RM, ISR, RC>
+impl<'a, MODE, RM, PD, ISR> ErrorType for Pin<'a, MODE, PD, RM, ISR>
 where
     PD: crate::PortDriver + crate::PortDriverDirection,
     RM: RawMutex,
     PD::Error: core::fmt::Debug,
-    ISR: crate::IRQPort,
-{
+    ISR: crate::IRQPort {
     type Error = PinError<PD::Error>;
 }
 
-impl<'a, MODE, RM, PD, IRQ, RC> Pin<'a, MODE, PD, RM, IRQ, RC>
+impl<'a, MODE, RM, PD, IRQ, IRQRC> Pin<'a, MODE, PD, RM, IRQRC>
 where
     PD: crate::PortDriver + crate::PortDriverDirection,
     RM: RawMutex,
     IRQ: crate::IRQPort,
-    RC: core::ops::Deref<Target = IRQ> + Clone + AsRef<IRQ> + core::borrow::Borrow<IRQ> 
+    IRQRC: core::ops::Deref<Target = IRQ> + Clone
 {
     /// Configure this pin into an input.
     ///
     /// The exact electrical details depend on the port-expander device which is used.
-    pub async fn into_input(self) -> Result<Pin<'a, crate::mode::Input, PD, RM, IRQ, RC>, PinError<PD::Error>> {
+    pub async fn into_input(self) -> Result<Pin<'a, crate::mode::Input, PD, RM, IRQRC>, PinError<PD::Error>> {
         self.port_driver().await.set_direction(self.pin_mask, crate::Direction::Input, false).await?;
         Ok(Pin {
             pin_mask: self.pin_mask,
             port_driver: self.port_driver,
             irq: self.irq,
             _m: PhantomData,
-            _g: PhantomData,
-            _i: PhantomData,
         })
     }
 
@@ -131,15 +125,13 @@ where
     ///
     /// The LOW state is, as long as the port-expander chip allows this, entered without any
     /// electrical glitch.
-    pub async fn into_output(self) -> Result<Pin<'a, crate::mode::Output, PD, RM, IRQ, RC>, PinError<PD::Error>> {
+    pub async fn into_output(self) -> Result<Pin<'a, crate::mode::Output, PD, RM, IRQRC>, PinError<PD::Error>> {
         self.port_driver().await.set_direction(self.pin_mask, crate::Direction::Output, false).await?;
         Ok(Pin {
             pin_mask: self.pin_mask,
             port_driver: self.port_driver,
             irq: self.irq,
             _m: PhantomData,
-            _g: PhantomData,
-            _i: PhantomData,
         })
     }
 
@@ -149,36 +141,32 @@ where
     /// electrical glitch.
     pub async fn into_output_high(
         self,
-    ) -> Result<Pin<'a, crate::mode::Output, PD, RM, IRQ, RC>, PinError<PD::Error>> {
+    ) -> Result<Pin<'a, crate::mode::Output, PD, RM, IRQRC>, PinError<PD::Error>> {
         self.port_driver().await.set_direction(self.pin_mask, crate::Direction::Output, true).await?;
         Ok(Pin {
             pin_mask: self.pin_mask,
             port_driver: self.port_driver,
             irq: self.irq,
             _m: PhantomData,
-            _g: PhantomData,
-            _i: PhantomData,
         })
     }
 }
 
-impl <'a, MODE: crate::mode::HasInterrupt, RM, PD, IRQ, RC> Pin<'a, MODE,  PD, RM, IRQ, RC> 
+impl <'a, MODE: crate::mode::HasInterrupt, RM, PD, IRQ, IRQRC> Pin<'a, MODE,  PD, RM, IRQRC> 
 where 
-    PD: crate::PortDriver + crate::PortDriverISR<IRQ, RC>,
+    PD: crate::PortDriver + crate::PortDriverISR<IRQ, IRQRC>,
     RM: RawMutex,
     IRQ: crate::IRQPort,
-    RC: core::ops::Deref<Target = IRQ> + Clone + AsRef<IRQ> + core::borrow::Borrow<IRQ> 
+    IRQRC: core::ops::Deref<Target = IRQ>
 {
     /// Configure this pin into an input with interrupt support.
-    pub async fn into_isr_pin(self) -> Result<Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, RC>, PinError<PD::Error>> {
+    pub async fn into_isr_pin(self) -> Result<Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>, PinError<PD::Error>> {
         if self.irq.is_some() { 
             Ok(Pin {
                 pin_mask: self.pin_mask,
                 port_driver: self.port_driver,
                 irq: self.irq,
                 _m: PhantomData,
-                _g: PhantomData,
-                _i: PhantomData,
             })
          } else {
             let isr = self.port_driver().await.get_isr();
@@ -187,20 +175,18 @@ where
                 port_driver: self.port_driver,
                 irq: Some(isr),
                 _m: PhantomData,
-                _g: PhantomData,
-                _i: PhantomData,
             })
         }
         
     }
 }
 
-impl <'a, RM, PD, IRQ, RC> Pin<'a, crate::mode::ISRInput,  PD, RM, IRQ, RC> 
+impl <'a, RM, PD, IRQ, IRQRC> Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC> 
 where 
-    PD: crate::PortDriver + crate::PortDriverISR<IRQ, RC>,
+    PD: crate::PortDriver + crate::PortDriverISR<IRQ, IRQRC>,
     RM: RawMutex,
     IRQ: crate::IRQPort,
-    RC: core::ops::Deref<Target = IRQ> + Clone + AsRef<IRQ> + core::borrow::Borrow<IRQ> 
+    IRQRC: core::ops::Deref<Target = IRQ>   
 {
     /// Listen for the specified interrupt type on this pin.
     pub async fn enable_interrupt(&mut self, interrupt_type: crate::InterruptType) -> Result<(), PinError<PD::Error>> {
@@ -234,12 +220,12 @@ where
     }
 }
 
-impl<'a, MODE, RM, PD, IRQ, RC> Pin<'a, MODE,  PD, RM, IRQ, RC>
+impl<'a, MODE, RM, PD, IRQ, IRQRC> Pin<'a, MODE,  PD, RM, IRQRC>
 where
     PD: crate::PortDriver + crate::PortDriverPolarity,
     RM: RawMutex,
     IRQ: crate::IRQPort,
-    RC: core::ops::Deref<Target = IRQ> + Clone + AsRef<IRQ> + core::borrow::Borrow<IRQ> 
+    IRQRC: core::ops::Deref<Target = IRQ>
 {
     /// Turn on hardware polarity inversion for this pin.
     pub async fn into_inverted(self) -> Result<Self, PinError<PD::Error>> {
@@ -254,12 +240,12 @@ where
     }
 }
 
-impl<'a, MODE: crate::mode::HasInput, RM, PD, IRQ, RC> Pin<'a, MODE, PD, RM, IRQ, RC>
+impl<'a, MODE: crate::mode::HasInput, RM, PD, IRQ, IRQRC> Pin<'a, MODE, PD, RM, IRQRC>
 where
     PD: crate::PortDriver,
     RM: RawMutex,
     IRQ: crate::IRQPort,
-    RC: core::ops::Deref<Target = IRQ> + Clone + AsRef<IRQ> + core::borrow::Borrow<IRQ> 
+    IRQRC: core::ops::Deref<Target = IRQ>
 {
     /// Read the pin's input state and return `true` if it is HIGH.
     pub async fn is_high(&self) -> Result<bool, PinError<PD::Error>> {
@@ -272,12 +258,12 @@ where
     }
 }
 
-impl<'a, MODE: crate::mode::HasInput, RM, PD, IRQ, RC> Pin<'a, MODE, PD, RM, IRQ, RC>
+impl<'a, MODE: crate::mode::HasInput, RM, PD, IRQ, IRQRC> Pin<'a, MODE, PD, RM, IRQRC>
 where
     PD: crate::PortDriver + crate::PortDriverPullUp,
     RM: RawMutex,
     IRQ: crate::IRQPort,
-    RC: core::ops::Deref<Target = IRQ> + Clone + AsRef<IRQ> + core::borrow::Borrow<IRQ> 
+    IRQRC: core::ops::Deref<Target = IRQ>
 {
     /// Enable/Disable pull-up resistors for this pin.
     ///
@@ -288,12 +274,12 @@ where
     }
 }
 
-impl<'a, MODE: crate::mode::HasInput, RM, PD, IRQ, RC> Pin<'a, MODE, PD, RM, IRQ, RC>
+impl<'a, MODE: crate::mode::HasInput, RM, PD, IRQ, IRQRC> Pin<'a, MODE, PD, RM, IRQRC>
 where
     PD: crate::PortDriver + crate::PortDriverPullDown,
     RM: RawMutex,
     IRQ: crate::IRQPort,
-    RC: core::ops::Deref<Target = IRQ> + Clone + AsRef<IRQ> + core::borrow::Borrow<IRQ> 
+    IRQRC: core::ops::Deref<Target = IRQ>
 {
     /// Enable/Disable pull-down resistors for this pin.
     ///
@@ -304,13 +290,13 @@ where
     }
 }
 
-impl<'a, MODE: crate::mode::HasInput, RM, PD, IRQ, RC> hal_digital::InputPin for Pin<'a, MODE, PD, RM, IRQ, RC>
+impl<'a, MODE: crate::mode::HasInput, RM, PD, IRQ, IRQRC> hal_digital::InputPin for Pin<'a, MODE, PD, RM, IRQRC>
 where
     PD: crate::PortDriver + crate::PortDriverDirection,
     <PD as crate::PortDriver>::Error: core::fmt::Debug,
     RM: RawMutex,
     IRQ: crate::IRQPort,
-    RC: core::ops::Deref<Target = IRQ> + Clone + AsRef<IRQ> + core::borrow::Borrow<IRQ> 
+    IRQRC: core::ops::Deref<Target = IRQ> + Clone
 {
     fn is_high(&mut self) -> Result<bool, Self::Error> {
         block_on(Pin::is_high(self))
@@ -321,13 +307,13 @@ where
     }
 }
 
-impl<'a, RM, PD, ISR, RC> Wait for Pin<'a, crate::mode::ISRInput, PD, RM, ISR, RC>
+impl<'a, RM, PD, ISR, ISRRC> Wait for Pin<'a, crate::mode::ISRInput, PD, RM, ISRRC>
 where
-    PD: crate::PortDriver + crate::PortDriverDirection + crate::PortDriverISR<ISR, RC>,
+    PD: crate::PortDriver + crate::PortDriverDirection + crate::PortDriverISR<ISR, ISRRC>,
     <PD as crate::PortDriver>::Error: core::fmt::Debug,
     RM: RawMutex,
     ISR: crate::IRQPort,
-    RC: core::ops::Deref<Target = ISR> + Clone + AsRef<ISR> + core::borrow::Borrow<ISR> 
+    ISRRC: core::ops::Deref<Target = ISR> + Clone
 {
     async fn wait_for_high(&mut self) -> Result<(), Self::Error> {
         self.wait_for_interrupt(crate::InterruptType::High).await
@@ -350,12 +336,12 @@ where
     }
 }
 
-impl<'a, MODE: crate::mode::HasOutput, RM, PD, IRQ, RC> Pin<'a, MODE, PD, RM, IRQ, RC>
+impl<'a, MODE: crate::mode::HasOutput, RM, PD, IRQ, IRQRC> Pin<'a, MODE, PD, RM, IRQRC>
 where
     PD: crate::PortDriver,
     RM: RawMutex,
     IRQ: crate::IRQPort,
-    RC: core::ops::Deref<Target = IRQ> + Clone + AsRef<IRQ> + core::borrow::Borrow<IRQ> 
+    IRQRC: core::ops::Deref<Target = IRQ>
 {
     /// Set the pin's output state to HIGH.
     ///
@@ -396,13 +382,13 @@ where
     }
 }
 
-impl<'a, MODE: crate::mode::HasOutput, RM, PD, IRQ, RC> hal_digital::OutputPin for Pin<'a, MODE, PD, RM, IRQ, RC>
+impl<'a, MODE: crate::mode::HasOutput, RM, PD, IRQ, IRQRC> hal_digital::OutputPin for Pin<'a, MODE, PD, RM, IRQRC>
 where
     PD: crate::PortDriver + crate::PortDriverDirection,
     <PD as crate::PortDriver>::Error: core::fmt::Debug,
     RM: RawMutex,
     IRQ: crate::IRQPort,
-    RC: core::ops::Deref<Target = IRQ> + Clone + AsRef<IRQ> + core::borrow::Borrow<IRQ> 
+    IRQRC: core::ops::Deref<Target = IRQ> + Clone
 {
     fn set_low(&mut self) -> Result<(), Self::Error> {
         block_on(Pin::set_low(self))
@@ -413,14 +399,14 @@ where
     }
 }
 
-impl<'a, MODE: crate::mode::HasOutput, RM, PD, IRQ, RC> hal_digital::StatefulOutputPin
-    for Pin<'a, MODE, PD, RM, IRQ, RC>
+impl<'a, MODE: crate::mode::HasOutput, RM, PD, IRQ, IRQRC> hal_digital::StatefulOutputPin
+    for Pin<'a, MODE, PD, RM, IRQRC>
 where
     PD: crate::PortDriver + crate::PortDriverDirection,
     <PD as crate::PortDriver>::Error: core::fmt::Debug,
     RM: RawMutex,
     IRQ: crate::IRQPort,
-    RC: core::ops::Deref<Target = IRQ> + Clone + AsRef<IRQ> + core::borrow::Borrow<IRQ> 
+    IRQRC: core::ops::Deref<Target = IRQ> + Clone
 {
     fn is_set_high(&mut self) -> Result<bool, Self::Error> {
         Pin::is_set_high(self)

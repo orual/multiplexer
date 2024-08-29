@@ -7,6 +7,8 @@
 #![allow(async_fn_in_trait, impl_trait_projections)]
 #[allow(unused_imports)]
 
+extern crate alloc;
+
 
 mod bus;
 mod common;

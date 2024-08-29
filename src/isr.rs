@@ -2,10 +2,12 @@ use core::cell::RefCell;
 use core::future::Future;
 use core::task::{Context, Poll, Waker};
 
-use embassy_sync::blocking_mutex::raw::RawMutex;
+use embassy_sync::blocking_mutex::raw::{CriticalSectionRawMutex, RawMutex};
 use embassy_sync::blocking_mutex::Mutex;
 use embedded_hal_async::digital::Wait;
 use embassy_sync::mutex::Mutex as AsyncMutex;
+
+use crate::common::{RefPtr, Shared};
 
 /// Interrupt request (IRQ) structure
 /// Used to represent the active interrupt for a single pin and to wake its associated task
@@ -21,14 +23,14 @@ pub struct Irq {
 /// Software structure for managing interrupts.
 /// Functions similarly to the `embassy_sync::waitqueue::MultiWakerRegistration`
 /// However, it selectively wakes tasks based on the pin mask and interrupt type.
-pub struct IrqPort<M: RawMutex, const N: usize>{
-    irqs: Mutex<M, RefCell<heapless::Vec<Irq, N>>>,
+pub struct IrqPort<const N: usize>{
+    irqs: Mutex<CriticalSectionRawMutex, RefCell<heapless::Vec<Irq, N>>>,
 }
 
-impl<M: RawMutex, const N: usize> IrqPort<M, N> {
+impl<const N: usize> IrqPort<N> {
     /// Create a new IRQ port
     pub const fn new() -> Self {
-        Self { irqs: Mutex::const_new(M::INIT, RefCell::new(heapless::Vec::new())) }
+        Self { irqs: Mutex::new(RefCell::new(heapless::Vec::new())) }
     }
 }
 
@@ -38,7 +40,7 @@ pub enum IRQError {
     IRQNotFound
 }
 
-impl<M: RawMutex, const N: usize> IRQPort for IrqPort<M, N> {
+impl<const N: usize> IRQPort for IrqPort<N> {
     fn register_irq(&self, pin_mask: u32, interrupt: crate::InterruptType) -> Irq {
         let irq = Irq {
             pin_mask,
@@ -174,8 +176,7 @@ pub trait IRQPort {
 
 impl<RC, T: IRQPort> IRQPort for RC
 where
-RC: core::ops::Deref<Target = T> + ?Sized
-{
+RC: core::ops::Deref<Target = T> + Clone {
     fn register_irq(&self, pin_mask: u32, interrupt: crate::InterruptType) -> Irq {
         self.deref().register_irq(pin_mask, interrupt)
     }
@@ -204,6 +205,7 @@ RC: core::ops::Deref<Target = T> + ?Sized
         self.deref().poll_irq(pin_mask, cx)
     }
 }
+
 
 
 pub trait ISRPort {

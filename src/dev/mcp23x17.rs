@@ -14,13 +14,14 @@ use core::{borrow::Borrow, ops::Deref};
 
 use embassy_futures::select::select;
 use embassy_sync::{blocking_mutex::raw::RawMutex, mutex::Mutex};
+use rclite::{Arc, Rc};
 
-use crate::{isr::{ExtIPin, ISRPort, IrqPort}, I2cExt, IRQPort};
+use crate::{common::{RefPtr, Shared}, isr::{ExtIPin, ISRPort, IrqPort}, I2cExt, IRQPort};
 
 /// `MCP23x17` "16-Bit I/O Expander with Serial Interface" with I2C or SPI interface
 pub struct Mcp23x17<M>(M);
 
-impl<I2C, RM, ISRRC, ISR, IRQRC, IRQ> Mcp23x17<Mutex<RM, Driver<Mcp23017Bus<I2C>, ISRRC, RM, ISR, IRQRC, IRQ>>>
+impl<I2C, RM, ISRRC, ISR, IRQRC, IRQ> Mcp23x17<Mutex<RM, Driver<Mcp23017Bus<I2C>, ISRRC, ISR, IRQRC, IRQ>>>
 where
     I2C: crate::I2cBus,
     RM: RawMutex,
@@ -35,14 +36,14 @@ where
     }
 }
 
-impl<SPI, RM, ISRRC, ISR, IRQRC, IRQ> Mcp23x17<Mutex<RM, Driver<Mcp23S17Bus<SPI>, ISRRC, RM, ISR, IRQRC, IRQ>>>
+impl<SPI, RM, ISRRC, ISR, IRQRC, IRQ> Mcp23x17<Mutex<RM, Driver<Mcp23S17Bus<SPI>, ISRRC, ISR, IRQRC, IRQ>>>
 where
     SPI: crate::SpiBus,
     RM: RawMutex,
     ISR: ISRPort,
-    ISRRC: Deref<Target = ISR> + Clone + AsRef<ISR> + Borrow<ISR> + ?Sized,
+    ISRRC: Deref<Target = ISR> + Clone,
     IRQ: IRQPort,
-    IRQRC: Deref<Target = IRQ> + Clone + AsRef<IRQ> + Borrow<IRQ> + ?Sized
+    IRQRC: Deref<Target = IRQ> + Clone
 {
     /// Create a new instance of the MCP23S17 with SPI interface
     pub fn new_mcp23s17(bus: SPI, isr: ISRRC, irq: IRQRC) -> Self {
@@ -68,14 +69,14 @@ W: embedded_hal_async::digital::Wait<Error = E>
     }
 }
 
-impl<'a, B, RM, ISR, ISRRC, IRQRC, IRQ> Mcp23x17<Mutex<RM, Driver<B, ISRRC, RM, ISR, IRQRC, IRQ>>>
+impl<'a, B, RM, ISR, ISRRC, IRQRC, IRQ> Mcp23x17<Mutex<RM, Driver<B, ISRRC, ISR, IRQRC, IRQ>>>
 where
     B: Mcp23x17Bus,
     RM: RawMutex,
     ISR: ISRPort,
-    ISRRC: Deref<Target = ISR> + Clone + AsRef<ISR> + Borrow<ISR> + ?Sized,
+    ISRRC: Deref<Target = ISR> + Clone,
     IRQ: IRQPort,
-    IRQRC: Deref<Target = IRQ> + Clone + AsRef<IRQ> + Borrow<IRQ> + ?Sized
+    IRQRC: Deref<Target = IRQ> + Clone
 {
     /// Create a new MCP23x17 driver instance with a mutex
     pub fn with_mutex(bus: B, isr: ISRRC, irq: IRQRC, a0: bool, a1: bool, a2: bool) -> Self {
@@ -83,11 +84,11 @@ where
     }
     
     /// Split the MCP23x17 driver instance into its individual pins
-    pub fn split(&'a mut self) -> Parts<'a, B, ISR, IRQ, RM, ISRRC, IRQRC, Driver<B, ISRRC, RM, ISR, IRQRC, IRQ>> 
+    pub fn split(&'a mut self) -> Parts<'a, B, ISR, IRQ, RM, ISRRC, IRQRC, Driver<B, ISRRC, ISR, IRQRC, IRQ>> 
     where 
         
     {
-        Parts {
+        Parts::<B, ISR, IRQ, RM, ISRRC, IRQRC, Driver<B, ISRRC, ISR, IRQRC, IRQ>> {
             gpa0: crate::Pin::new(0, &self.0),
             gpa1: crate::Pin::new(1, &self.0),
             gpa2: crate::Pin::new(2, &self.0),
@@ -113,35 +114,37 @@ where
 
 /// Pins of the MCP23x17
 #[allow(missing_docs)]
-pub struct Parts<'a, B, ISR, IRQ, RM, ISRRC, IRQRC, PD = Driver<B, ISRRC, RM, ISR, IRQRC, IRQ>>
+pub struct Parts<'a, B, ISR, IRQ, RM, ISRRC, IRQRC, PD = Driver<B, ISRRC, ISR, IRQRC, IRQ>>
 where
     B: Mcp23x17Bus,
     RM: RawMutex,
     ISR: ISRPort,
     IRQ: IRQPort,
-    ISRRC: Deref<Target = ISR> + Clone + AsRef<ISR> + Borrow<ISR> + ?Sized,
-    IRQRC: Deref<Target = IRQ> + Clone + AsRef<IRQ> + Borrow<IRQ> + ?Sized
+    ISRRC: Deref<Target = ISR> + Clone,
+    IRQRC: Deref<Target = IRQ> + Clone
 {
-    pub gpa0: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, IRQRC>,
-    pub gpa1: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, IRQRC>,
-    pub gpa2: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, IRQRC>,
-    pub gpa3: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, IRQRC>,
-    pub gpa4: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, IRQRC>,
-    pub gpa5: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, IRQRC>,
-    pub gpa6: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, IRQRC>,
-    pub gpa7: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, IRQRC>,
-    pub gpb0: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, IRQRC>,
-    pub gpb1: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, IRQRC>,
-    pub gpb2: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, IRQRC>,
-    pub gpb3: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, IRQRC>,
-    pub gpb4: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, IRQRC>,
-    pub gpb5: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, IRQRC>,
-    pub gpb6: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, IRQRC>,
-    pub gpb7: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQ, IRQRC>,
-    _b: core::marker::PhantomData<B>,
+    pub gpa0: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>,
+    pub gpa1: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>,
+    pub gpa2: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>,
+    pub gpa3: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>,
+    pub gpa4: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>,
+    pub gpa5: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>,
+    pub gpa6: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>,
+    pub gpa7: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>,
+    pub gpb0: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>,
+    pub gpb1: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>,
+    pub gpb2: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>,
+    pub gpb3: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>,
+    pub gpb4: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>,
+    pub gpb5: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>,
+    pub gpb6: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>,
+    pub gpb7: crate::Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>,
+    _b: core::marker::PhantomData<Mutex<RM,B>>,
     _i: core::marker::PhantomData<ISR>,
     _r: core::marker::PhantomData<ISRRC>,
 }
+
+
 
 
 #[allow(dead_code)]
@@ -231,7 +234,7 @@ impl From<Regs> for u8 {
 }
 
 /// Driver for the MCP23017 and MCP23S17
-pub struct Driver<B, ISRRC, RM: RawMutex, ISR, IRQRC, IRQ = IrqPort<RM, 16>> {
+pub struct Driver<B, ISRRC, ISR, IRQRC, IRQ = IrqPort<16>> {
     bus: B,
     out: u16,
     addr: u8,
@@ -239,18 +242,12 @@ pub struct Driver<B, ISRRC, RM: RawMutex, ISR, IRQRC, IRQ = IrqPort<RM, 16>> {
     irq_port: IRQRC,
     _i: core::marker::PhantomData<ISR>,
     _iq: core::marker::PhantomData<IRQ>,
-    _r: core::marker::PhantomData<RM>,
 }
 
 #[allow(missing_docs)]
-impl<'a, B, ISRRC, RM, ISR, IRQRC, IRQ> Driver<B, ISRRC, RM, ISR, IRQRC, IRQ> 
-where 
-    RM: RawMutex,
-    ISR: ISRPort,
-    IRQ: IRQPort,
-    ISRRC: Deref<Target = ISR> + Clone + AsRef<ISR> + Borrow<ISR>,
-    IRQRC: Deref<Target = IRQ> + Clone + AsRef<IRQ> + Borrow<IRQ>  
-{
+impl<B, ISRRC, ISR, IRQRC, IRQ> Driver<B,ISRRC, ISR, IRQRC, IRQ> 
+
+    {
     pub fn new(bus: B, isr: ISRRC, irq: IRQRC, a0: bool, a1: bool, a2: bool) -> Self {
         let addr = 0x20 | ((a2 as u8) << 2) | ((a1 as u8) << 1) | (a0 as u8);
         Self {
@@ -261,16 +258,14 @@ where
             irq_port: irq,
             _i: core::marker::PhantomData,
             _iq: core::marker::PhantomData,
-            _r: core::marker::PhantomData,
         }
     }
 }
 
-impl<B: Mcp23x17Bus, ISRRC, RM, ISR, IRQRC, IRQ> crate::PortDriver for Driver<B, ISRRC, RM, ISR, IRQRC, IRQ> 
+impl<B: Mcp23x17Bus, ISRRC, ISR, IRQRC, IRQ> crate::PortDriver for Driver<B, ISRRC, ISR, IRQRC, IRQ> 
 where 
-    RM: RawMutex,
     ISR: crate::isr::ISRPort,
-    ISRRC: Deref<Target = ISR> + Clone + AsRef<ISR> + Borrow<ISR> 
+    ISRRC: Deref<Target = ISR> + Clone
 {
     type Error = B::BusError;
 
@@ -308,11 +303,10 @@ where
     }
 }
 
-impl<B: Mcp23x17Bus, ISRRC, RM, ISR, IRQRC, IRQ> crate::PortDriverDirection for Driver<B, ISRRC, RM, ISR, IRQRC, IRQ>
+impl<B: Mcp23x17Bus,ISRRC, ISR, IRQRC, IRQ> crate::PortDriverDirection for Driver<B, ISRRC, ISR, IRQRC, IRQ>
 where 
-    RM: RawMutex,
     ISR: ISRPort,
-    ISRRC: Deref<Target = ISR> + Clone + AsRef<ISR> + Borrow<ISR> 
+    ISRRC: Deref<Target = ISR> + Clone
 {
     async fn set_direction(
         &mut self,
@@ -344,11 +338,10 @@ where
     }
 }
 
-impl<B: Mcp23x17Bus, RC, RM, ISR, IRQRC, IRQ> crate::PortDriverPullUp for Driver<B, RC, RM, ISR, IRQRC, IRQ>
+impl<B: Mcp23x17Bus, RC, ISR, IRQRC, IRQ> crate::PortDriverPullUp for Driver<B, RC, ISR, IRQRC, IRQ>
 where 
-    RM: RawMutex,
     ISR: ISRPort,
-    RC: core::ops::Deref<Target = ISR> + Clone + AsRef<ISR> + core::borrow::Borrow<ISR>  
+    RC: core::ops::Deref<Target = ISR> + Clone
 {
     async fn set_pull_up(&mut self, mask: u32, enable: bool) -> Result<(), Self::Error> {
         let (mask_set, mask_clear) = match enable {
@@ -375,11 +368,10 @@ where
     }
 }
 
-impl<B: Mcp23x17Bus, RC, RM, ISR, IRQRC, IRQ> crate::PortDriverPolarity for Driver<B, RC, RM, ISR, IRQRC, IRQ>
+impl<B: Mcp23x17Bus, ISRRC, ISR, IRQRC, IRQ> crate::PortDriverPolarity for Driver<B, ISRRC, ISR, IRQRC, IRQ>
 where 
-    RM: RawMutex,
     ISR: ISRPort,
-    RC: Deref<Target = ISR> + Clone + AsRef<ISR> + Borrow<ISR>  
+    ISRRC: Deref<Target = ISR> + Clone
 {
     async fn set_polarity(&mut self, mask: u32, polarity: crate::Polarity) -> Result<(), Self::Error> {
         let (mask_set, mask_clear) = match polarity {
@@ -406,14 +398,13 @@ where
     }
 }
 
-impl<B: Mcp23x17Bus, ISRRC, RM, ISR, IRQ, IRQRC> crate::PortDriverInterrupts 
-for Driver<B, ISRRC, RM, ISR, IRQRC, IRQ>
+impl<B: Mcp23x17Bus, ISRRC, ISR, IRQ, IRQRC> crate::PortDriverInterrupts 
+for Driver<B, ISRRC, ISR, IRQRC, IRQ>
 where 
-    RM: RawMutex,
     ISR: ISRPort,
     IRQ: IRQPort,
-    ISRRC: Deref<Target = ISR> + Clone + AsRef<ISR> + Borrow<ISR>,
-    IRQRC: Deref<Target = IRQ> + Clone + AsRef<IRQ> + Borrow<IRQ>  
+    ISRRC: Deref<Target = ISR> + Clone,
+    IRQRC: Deref<Target = IRQ> + Clone 
 {
     async fn fetch_interrupt_state(&mut self) -> Result<(), Self::Error> {
         loop {
@@ -427,14 +418,13 @@ where
     }
 }
 
-impl<B: Mcp23x17Bus, ISRRC, RM, ISR, IRQ, IRQRC> crate::PortDriverIrqMask 
-for Driver<B, ISRRC, RM, ISR, IRQRC, IRQ>
+impl<B: Mcp23x17Bus, ISRRC, ISR, IRQ, IRQRC> crate::PortDriverIrqMask 
+for Driver<B, ISRRC, ISR, IRQRC, IRQ>
 where 
-    RM: RawMutex,
     ISR: ISRPort,
     IRQ: IRQPort,
-    ISRRC: Deref<Target = ISR> + Clone + AsRef<ISR> + Borrow<ISR>,
-    IRQRC: Deref<Target = IRQ> + Clone + AsRef<IRQ> + Borrow<IRQ>  
+    ISRRC: Deref<Target = ISR> + Clone,
+    IRQRC: Deref<Target = IRQ> + Clone  
 {
     async fn configure_interrupts(&mut self, mask_set: u32, mask_clear: u32, interrupt: crate::InterruptType) -> Result<(), Self::Error> {
         let (mask_set, mask_clear) = (mask_set as u16, mask_clear as u16);
@@ -562,14 +552,13 @@ where
     }
 }
 
-impl<B: Mcp23x17Bus, ISRRC, RM, ISR, IRQ, IRQRC> crate::PortDriverISR<IRQ, IRQRC> 
-for Driver<B, ISRRC, RM, ISR, IRQRC, IRQ>
-where 
-    RM: RawMutex,
+impl<B: Mcp23x17Bus, ISRRC, ISR, IRQ, IRQRC> crate::PortDriverISR<IRQ, IRQRC> 
+for Driver<B, ISRRC, ISR, IRQRC, IRQ>
+where
     ISR: ISRPort,
     IRQ: IRQPort,
-    ISRRC: Deref<Target = ISR> + Clone + AsRef<ISR> + Borrow<ISR>,
-    IRQRC: Deref<Target = IRQ> + Clone + AsRef<IRQ> + Borrow<IRQ>  
+    ISRRC: Deref<Target = ISR> + Clone,
+    IRQRC: Deref<Target = IRQ> + Clone
 {
     fn get_isr(&mut self) -> IRQRC {
         self.irq_port.clone()

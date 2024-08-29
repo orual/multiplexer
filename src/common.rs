@@ -1,4 +1,6 @@
-use core::{borrow::Borrow, ops::Deref};
+use core::{borrow::Borrow, fmt::Pointer, ops::Deref, pin::Pin};
+
+use crate::IRQPort;
 
 
 
@@ -113,8 +115,7 @@ pub trait PortDriverIrqMask: PortDriver {
 }
 
 
-pub trait PortDriverExtI<ISR,RC>: PortDriverISR<ISR, RC> 
-where RC: Deref<Target = ISR> + Clone + AsRef<ISR> + Borrow<ISR>
+pub trait PortDriverExtI<ISR, ISRRC>: PortDriverISR<ISR, ISRRC> where ISRRC: Deref<Target = ISR>
 {
     async fn configure_int_pin(&mut self, mask: u32, polarity: Polarity, drive: Drive) -> Result<(), Self::Error>;
 
@@ -123,10 +124,9 @@ where RC: Deref<Target = ISR> + Clone + AsRef<ISR> + Borrow<ISR>
 
 /// This trait provides a reference to the interrupt service routine (ISR) logic for the port expander.
 /// RC is generic over smart pointer types like Rc and Arc. Heapless equivalents should also work.
-pub trait PortDriverISR<ISR, RC>: PortDriverInterrupts + PortDriverIrqMask 
-where RC: Deref<Target = ISR> + Clone + AsRef<ISR> + Borrow<ISR>
+pub trait PortDriverISR<ISR, ISRRC>: PortDriverInterrupts + PortDriverIrqMask where ISRRC: Deref<Target = ISR>
 {
-    fn get_isr(&mut self) -> RC;
+    fn get_isr(&mut self) -> ISRRC;
 }
 
 /// Pin Modes
@@ -173,3 +173,136 @@ pub mod mode {
     impl HasExtI for ExtI {}
 
 }
+
+pub trait RefPtr: Clone + Deref {
+    fn new(value: Self::Target) -> Self;
+    fn make_mut(self_: &mut Self) -> &mut Self::Target
+    where
+        Self::Target: Clone;
+
+    fn try_unwrap(this: Self) -> Result<<Self as Deref>::Target, Self> where <Self as Deref>::Target: Sized;
+
+    fn into_inner(this: Self) -> Option<<Self as Deref>::Target> where <Self as Deref>::Target: Sized;
+}
+
+impl<T> RefPtr for alloc::rc::Rc<T> {
+    fn new(value: Self::Target) -> Self {
+        alloc::rc::Rc::new(value)
+    }
+    fn make_mut(self_: &mut Self) -> &mut Self::Target
+    where
+        T: Clone,
+    {
+        alloc::rc::Rc::make_mut(self_)
+    }
+
+    fn try_unwrap(this: Self) -> Result<<Self as Deref>::Target, Self> {
+        alloc::rc::Rc::try_unwrap(this)
+    }
+
+    fn into_inner(this: Self) -> Option<<Self as Deref>::Target> {
+        alloc::rc::Rc::into_inner(this)
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T> RefPtr for std::sync::Arc<T> {
+    fn new(value: Self::Target) -> Self {
+        std::sync::Arc::new(value)
+    }
+    fn make_mut(self_: &mut Self) -> &mut Self::Target
+    where
+        T: Clone,
+    {
+        std::sync::Arc::make_mut(self_)
+    }
+
+    fn try_unwrap(this: Self) -> Result<<Self as Deref>::Target, Self> {
+        std::sync::Arc::try_unwrap(this)
+    }
+
+    fn into_inner(this: Self) -> Option<<Self as Deref>::Target> {
+        std::sync::Arc::into_inner(this)
+    }
+}
+
+impl<T> RefPtr for rclite::Rc<T> {
+    fn new(value: Self::Target) -> Self {
+        rclite::Rc::new(value)
+    }
+    fn make_mut(self_: &mut Self) -> &mut Self::Target
+    where
+        T: Clone,
+    {
+        rclite::Rc::make_mut(self_)
+    }
+
+    fn try_unwrap(this: Self) -> Result<<Self as Deref>::Target, Self> {
+        rclite::Rc::try_unwrap(this)
+    }
+
+    fn into_inner(this: Self) -> Option<<Self as Deref>::Target> {
+        rclite::Rc::into_inner(this)
+    }
+}
+
+impl<T> RefPtr for rclite::Arc<T> {
+    fn new(value: Self::Target) -> Self {
+        rclite::Arc::new(value)
+    }
+    fn make_mut(self_: &mut Self) -> &mut Self::Target
+    where
+        T: Clone,
+    {
+        rclite::Arc::make_mut(self_)
+    }
+
+    fn try_unwrap(this: Self) -> Result<<Self as Deref>::Target, Self> {
+        rclite::Arc::try_unwrap(this)
+    }
+
+    fn into_inner(this: Self) -> Option<<Self as Deref>::Target> {
+        rclite::Arc::into_inner(this)
+    }
+}
+pub trait Shared<T> {
+    type Ptr: RefPtr<Target = T>;
+
+    fn new(value: <Self::Ptr as Deref>::Target) -> Self::Ptr {
+        Self::Ptr::new(value)
+    }
+
+    fn make_mut(this: &mut Self::Ptr) -> &mut <Self::Ptr as Deref>::Target
+    where
+        <Self::Ptr as Deref>::Target: Clone,
+    {
+        Self::Ptr::make_mut(this)
+    }
+
+    fn try_unwrap(this: Self::Ptr) -> Result<<Self::Ptr as Deref>::Target, Self::Ptr> {
+        Self::Ptr::try_unwrap(this)
+    }
+
+    fn into_inner(this: Self::Ptr) -> Option<<Self::Ptr as Deref>::Target> {
+        Self::Ptr::into_inner(this)
+    }   
+}
+
+impl<T> Shared<T> for alloc::rc::Rc<()> {
+    type Ptr = alloc::rc::Rc<T>;
+}
+
+impl<T> Shared<T> for rclite::Rc<()> {
+    type Ptr = rclite::Rc<T>;
+}
+
+impl<T> Shared<T> for rclite::Arc<()> {
+    type Ptr = rclite::Arc<T>;
+}
+
+#[cfg(feature = "std")]
+impl<T> Shared<T> for std::sync::Arc<()> {
+    type Ptr = Arc<T>;
+}
+
+
