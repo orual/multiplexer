@@ -23,6 +23,7 @@ pub use bus::I2cBus;
 pub use common::mode;
 pub use common::InterruptType;
 pub use pin::Pin;
+pub use pin::PinError;
 
 pub(crate) use bus::I2cExt;
 pub(crate) use bus::SpiBus;
