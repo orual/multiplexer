@@ -49,7 +49,7 @@ where
         self.port_driver.lock().await
     }
 
-    /// Access the port driver directly, if needed, to run a function using the it.
+    /// Access the port driver directly, if needed, to run a function using it.
     /// Due to the lack of async closures, this has limitations.
     pub fn access_port_driver<F, R>(&self, f: F) -> R
     where
