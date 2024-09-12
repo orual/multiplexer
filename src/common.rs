@@ -101,6 +101,7 @@ pub enum InterruptType {
     /// Interrupt triggered when the pin is low.
     /// Behaviour can be one-shot or latched.
     Low,
+    Err,
 }
 
 pub trait PortDriverInterrupts: PortDriver {

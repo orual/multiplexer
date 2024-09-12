@@ -218,6 +218,24 @@ where
             todo!("No ISR available")
         }
     }
+
+    /// gets the next interrupt, regardless of the interrupt type
+    pub async fn get_next_interrupt(&mut self) -> Result<crate::InterruptType, PinError<PD::Error>> {
+        self.enable_interrupt(crate::InterruptType::Both).await?;
+        let maybe_irq = &self.irq;
+        if let Some(irq) = maybe_irq {
+            let maybe_irq = irq.get_irq(self.pin_mask);
+            if let Some(future) = maybe_irq {
+                let interrupt = future.await;
+                
+                Ok(interrupt)
+            } else {
+                todo!("No ISR available")
+            }
+        } else {
+            todo!("No ISR available")
+        }
+    }
 }
 
 impl<'a, MODE, RM, PD, IRQ, IRQRC> Pin<'a, MODE,  PD, RM, IRQRC>

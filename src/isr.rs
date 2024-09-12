@@ -2,12 +2,15 @@ use core::cell::RefCell;
 use core::future::Future;
 use core::task::{Context, Poll, Waker};
 
+use embassy_rp::interrupt::typelevel::Interrupt;
+use embassy_rp::usb::In;
 use embassy_sync::blocking_mutex::raw::{CriticalSectionRawMutex, RawMutex};
 use embassy_sync::blocking_mutex::Mutex;
 use embedded_hal_async::digital::Wait;
 use embassy_sync::mutex::Mutex as AsyncMutex;
 
 use crate::common::{RefPtr, Shared};
+use crate::InterruptType;
 
 /// Interrupt request (IRQ) structure
 /// Used to represent the active interrupt for a single pin and to wake its associated task
@@ -131,14 +134,14 @@ impl<const N: usize> IRQPort for IrqPort<N> {
         })
     }
 
-    fn poll_irq(&self, pin_mask: u32, cx: &mut Context<'_>) -> Poll<Result<(), IRQError>> {
+    fn poll_irq(&self, pin_mask: u32, cx: &mut Context<'_>) -> Poll<Result<InterruptType, IRQError>> {
         self.irqs.lock(|irqs| {
             let mut irqs = irqs.borrow_mut();
             let irq = irqs.iter_mut().find(|irq| irq.pin_mask == pin_mask);
             if let Some(irq) = irq {
                 if irq.state {
                     irq.state = false;
-                    Poll::Ready(Ok(()))
+                    Poll::Ready(Ok(irq.interrupt))
                 } else {
                     if let Some(waker) = &irq.waker {
                         if waker.will_wake(cx.waker()) {
@@ -171,7 +174,7 @@ pub trait IRQPort {
     fn push_irq(&self, changes: (u32, u32));
     /// Poll the IRQ port for an interrupt for a specific pin or pins
     /// Used internally by `IRQFuture` to allow `await`ing for an interrupt
-    fn poll_irq(&self, pin_mask: u32, cx: &mut Context<'_>) -> Poll<Result<(), IRQError>>;
+    fn poll_irq(&self, pin_mask: u32, cx: &mut Context<'_>) -> Poll<Result<InterruptType, IRQError>>;
 }
 
 impl<RC, T: IRQPort> IRQPort for RC
@@ -201,7 +204,7 @@ RC: core::ops::Deref<Target = T> + Clone {
         self.deref().push_irq(changes)
     }
 
-    fn poll_irq(&self, pin_mask: u32, cx: &mut Context<'_>) -> Poll<Result<(), IRQError>> {
+    fn poll_irq(&self, pin_mask: u32, cx: &mut Context<'_>) -> Poll<Result<InterruptType, IRQError>> {
         self.deref().poll_irq(pin_mask, cx)
     }
 }
@@ -239,13 +242,16 @@ RC: core::ops::Deref<Target = T> + ?Sized
 pub struct IRQFuture<'s, 'a, ISR: IRQPort> {
     pin_mask: u32,
     isr: &'s ISR,
-    _a: core::marker::PhantomData<&'a ()>
+    _a: core::marker::PhantomData<&'a InterruptType>
 }
 
 impl<'s, 'a, ISR: IRQPort> Future for IRQFuture<'s, 'a, ISR> {
-    type Output = ();
+    type Output = InterruptType;
 
     fn poll(self: core::pin::Pin<&mut IRQFuture<'s, 'a, ISR>>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        IRQPort::poll_irq(self.isr, self.pin_mask, cx).map(|_| ())
+        IRQPort::poll_irq(self.isr, self.pin_mask, cx).map(|i| match i {
+            Ok(i) => i,
+            Err(_) => InterruptType::Err,
+        })
     }
 }

@@ -480,6 +480,7 @@ where
                         (mask_clear & 0xFF) as u8
                     ).await?;
                 },
+                crate::InterruptType::Err => panic!("Err interrupt type should not be explicitly set"),
             }
             self.bus.update_reg(
                 self.addr, 
@@ -540,6 +541,7 @@ where
                         (mask_clear >> 8) as u8
                     ).await?;
                 },
+                crate::InterruptType::Err => panic!("Err interrupt type should not be explicitly set"),
             }
             self.bus.update_reg(
                 self.addr, 
