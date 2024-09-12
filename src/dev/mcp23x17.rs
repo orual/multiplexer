@@ -240,8 +240,8 @@ pub struct Driver<B, ISRRC, ISR, IRQRC, IRQ = IrqPort<16>> {
     addr: u8,
     isr: ISRRC,
     irq_port: IRQRC,
-    _i: core::marker::PhantomData<ISR>,
-    _iq: core::marker::PhantomData<IRQ>,
+    _i: Arc<core::marker::PhantomData<ISR>>,
+    _iq: Arc<core::marker::PhantomData<IRQ>>,
 }
 
 #[allow(missing_docs)]
@@ -256,8 +256,8 @@ impl<B, ISRRC, ISR, IRQRC, IRQ> Driver<B,ISRRC, ISR, IRQRC, IRQ>
             addr,
             isr,
             irq_port: irq,
-            _i: core::marker::PhantomData,
-            _iq: core::marker::PhantomData,
+            _i: Arc::new(core::marker::PhantomData),
+            _iq: Arc::new(core::marker::PhantomData),
         }
     }
 }
