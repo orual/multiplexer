@@ -110,6 +110,12 @@ where
     IRQ: crate::IRQPort,
     IRQRC: core::ops::Deref<Target = IRQ> + Clone
 {
+
+    /// Set the direction of this pin.
+    pub async fn set_direction(&self, direction: crate::Direction) -> Result<(), PinError<PD::Error>> {
+        self.port_driver().await.set_direction(self.pin_mask, direction, false).await?;
+        Ok(())
+    }
     /// Configure this pin into an input.
     ///
     /// The exact electrical details depend on the port-expander device which is used.
