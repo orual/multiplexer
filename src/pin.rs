@@ -221,7 +221,6 @@ where
 
     /// gets the next interrupt, regardless of the interrupt type
     pub async fn get_next_interrupt(&mut self) -> Result<crate::InterruptType, PinError<PD::Error>> {
-        self.enable_interrupt(crate::InterruptType::Both).await?;
         let maybe_irq = &self.irq;
         if let Some(irq) = maybe_irq {
             let maybe_irq = irq.get_irq(self.pin_mask);
