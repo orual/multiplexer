@@ -111,7 +111,7 @@ where
     /// Configure this pin into an input.
     ///
     /// The exact electrical details depend on the port-expander device which is used.
-    pub async fn into_input(&self) -> Result<Pin<'a, crate::mode::Input, PD, RM, IRQRC>, PinError<PD::Error>> {
+    pub async fn into_input(self) -> Result<Pin<'a, crate::mode::Input, PD, RM, IRQRC>, PinError<PD::Error>> {
         self.port_driver().await.set_direction(self.pin_mask, crate::Direction::Input, false).await?;
         Ok(Pin {
             pin_mask: self.pin_mask,
@@ -125,7 +125,7 @@ where
     ///
     /// The LOW state is, as long as the port-expander chip allows this, entered without any
     /// electrical glitch.
-    pub async fn into_output(&self) -> Result<Pin<'a, crate::mode::Output, PD, RM, IRQRC>, PinError<PD::Error>> {
+    pub async fn into_output(self) -> Result<Pin<'a, crate::mode::Output, PD, RM, IRQRC>, PinError<PD::Error>> {
         self.port_driver().await.set_direction(self.pin_mask, crate::Direction::Output, false).await?;
         Ok(Pin {
             pin_mask: self.pin_mask,
@@ -140,7 +140,7 @@ where
     /// The HIGH state is, as long as he port-expander chip allows this, entered without any
     /// electrical glitch.
     pub async fn into_output_high(
-        &self,
+        self,
     ) -> Result<Pin<'a, crate::mode::Output, PD, RM, IRQRC>, PinError<PD::Error>> {
         self.port_driver().await.set_direction(self.pin_mask, crate::Direction::Output, true).await?;
         Ok(Pin {
@@ -160,7 +160,7 @@ where
     IRQRC: core::ops::Deref<Target = IRQ> + Clone
 {
     /// Configure this pin into an input with interrupt support.
-    pub async fn into_isr_pin(&self) -> Result<Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>, PinError<PD::Error>> {
+    pub async fn into_isr_pin(self) -> Result<Pin<'a, crate::mode::ISRInput, PD, RM, IRQRC>, PinError<PD::Error>> {
         if self.irq.is_some() { 
             Ok(Pin {
                 pin_mask: self.pin_mask,
