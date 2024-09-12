@@ -64,14 +64,18 @@ where
 
 /// Error type for [`Pin`] which implements [`embedded_hal::digital::Error`].
 #[derive(Debug, defmt::Format)]
-pub struct PinError<PDE> {
-    driver_error: PDE,
+pub enum PinError<PDE> {
+    DriverError(PDE),
+    NoISR,
 }
 
 impl<PDE> PinError<PDE> {
     /// The upstream port driver error that occurred
     pub fn driver_error(&self) -> &PDE {
-        &self.driver_error
+        match self {
+            PinError::DriverError(e) => e,
+            PinError::NoISR => panic!("No ISR available"),
+        }
     }
 }
 
@@ -86,9 +90,7 @@ where
 
 impl<PDE> From<PDE> for PinError<PDE> {
     fn from(value: PDE) -> Self {
-        Self {
-            driver_error: value,
-        }
+        Self::DriverError(value)
     }
 }
 
@@ -212,10 +214,10 @@ where
                 future.await;
                 Ok(())
             } else {
-                todo!("No ISR available")
+                Err(PinError::NoISR)
             }
         } else {
-            todo!("No ISR available")
+            Err(PinError::NoISR)
         }
     }
 
@@ -229,10 +231,10 @@ where
                 
                 Ok(interrupt)
             } else {
-                todo!("No ISR available")
+                Err(PinError::NoISR)
             }
         } else {
-            todo!("No ISR available")
+            Err(PinError::NoISR)
         }
     }
 }

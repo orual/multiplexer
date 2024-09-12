@@ -428,6 +428,7 @@ where
 {
     async fn configure_interrupts(&mut self, mask_set: u32, mask_clear: u32, interrupt: crate::InterruptType) -> Result<(), Self::Error> {
         let (mask_set, mask_clear) = (mask_set as u16, mask_clear as u16);
+        
         if mask_set & 0x00FF != 0 || mask_clear & 0x00FF != 0 {
             // make sure the relevant pins are set as inputs
             self.bus.update_reg(
@@ -497,6 +498,7 @@ where
                 (mask_set >> 8) as u8,
                 0 as u8,
             ).await?;
+            
             match interrupt {
                 crate::InterruptType::Falling | crate::InterruptType::Rising | 
                 crate::InterruptType::Both => {
