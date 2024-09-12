@@ -73,7 +73,7 @@ typenum = "1.17"
 static_cell = { version = "2" }
 portable-atomic = { version = "1.5", features = ["critical-section"] }
 panic-probe = { version = "0.3", features = ["print-defmt"] }
-embedded-alloc = { version = "0.5", git = "https://github.com/rust-embedded/embedded-alloc" }
+embedded-alloc = { version = "0.6", git = "https://github.com/rust-embedded/embedded-alloc" }
 
 embedded-hal = { version = "1.0" }
 embedded-hal-async = { version = "1.0" }
